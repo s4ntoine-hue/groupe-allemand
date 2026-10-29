@@ -1,3 +1,5 @@
+import { supabaseUrl, supabaseKey } from "./_supabase.js";
+
 // AI import: reads a document or pasted text with Claude and returns the events found.
 // Only for signed-in members, and only when ANTHROPIC_API_KEY is set in Vercel.
 
@@ -7,8 +9,8 @@ export default async function handler(req, res) {
   if (!key || process.env.IMPORT_ENABLED === "false") return res.status(404).json({ error: "disabled" });
 
   const token = (req.headers.authorization || "").replace(/^Bearer /, "");
-  const who = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`, {
-    headers: { apikey: process.env.SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` },
+  const who = await fetch(`${supabaseUrl()}/auth/v1/user`, {
+    headers: { apikey: supabaseKey(), Authorization: `Bearer ${token}` },
   });
   if (!token || !who.ok) return res.status(401).json({ error: "not signed in" });
 
