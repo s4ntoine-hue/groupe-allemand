@@ -1,0 +1,3 @@
+{
+  "functions": { "api/import.js": { "maxDuration": 60 } }
+}
