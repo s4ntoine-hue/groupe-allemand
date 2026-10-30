@@ -198,7 +198,8 @@
       if (started) return;
       started = true;
       const o = $("#overlay"); o.hidden = true; o.innerHTML = "";
-      const out = $("#btn-logout"); out.hidden = false; out.onclick = () => sb.auth.signOut();
+      window.currentUserEmail = s.user.email || "";
+      $("#account").hidden = false; $("#btn-logout").onclick = () => sb.auth.signOut();
       window.startApp();
     };
     sb.auth.onAuthStateChange((_event, s) => onSession(s));

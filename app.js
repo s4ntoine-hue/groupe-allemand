@@ -182,7 +182,19 @@ async function resolveNames(ids) {
 /* ---------- Rendering ---------- */
 function render() {
   const noProfile = state.db && state.me && !state.members[state.me];
-  $("#btn-profile").textContent = noProfile ? "Créer mon profil" : "Mon profil";
+  $("#btn-profile").textContent = noProfile ? "✏️ Créer mon profil" : "✏️ Modifier mon profil";
+  $("#m-view").hidden = !!noProfile;
+  $("#welcome").hidden = !noProfile;
+  if (state.me) {
+    const email = window.currentUserEmail || "";
+    const name = (state.members[state.me] && state.members[state.me].displayName) || email.split("@")[0] || "Mon compte";
+    $("#acct-av").textContent = name.slice(0, 1).toUpperCase();
+    $("#acct-av").style.background = colorOf(state.me);
+    $("#acct-name").textContent = name;
+    $("#acct-full").textContent = name;
+    $("#acct-email").textContent = email;
+    $("#btn-account").setAttribute("aria-label", `Mon compte : ${name}, connecté`);
+  }
   document.querySelectorAll(".tab").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === state.tab)));
   $("#view-planning").hidden = state.tab !== "planning";
   $("#view-list").hidden = state.tab === "planning";
@@ -702,7 +714,13 @@ document.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => {
   render();
 });
 $("#btn-add").onclick = () => { if (requireDb()) openChooser(); };
-$("#btn-profile").onclick = () => { if (requireDb()) openProfileForm(); };
+const acctMenu = open => { $("#acct-menu").hidden = !open; $("#btn-account").setAttribute("aria-expanded", String(open)); };
+$("#btn-account").onclick = e => { e.stopPropagation(); acctMenu($("#acct-menu").hidden); };
+document.addEventListener("click", e => { if (!e.target.closest("#account")) acctMenu(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") acctMenu(false); });
+$("#btn-profile").onclick = () => { acctMenu(false); if (requireDb()) openProfileForm(); };
+$("#m-view").onclick = () => { acctMenu(false); if (state.me) openProfile(state.me); };
+$("#welcome-go").onclick = () => { if (requireDb()) openProfileForm(); };
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-profile]");
   if (b && b.dataset.profile) { e.stopPropagation(); openProfile(b.dataset.profile); }

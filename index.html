@@ -67,7 +67,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Week board */
 .weekbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
 .weekbar h2 { font-size: 1.25rem; font-weight: 600; }
-.weekbar .nav { display: flex; gap: 6px; }
+.weekbar .nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.wrap > * { min-width: 0; }
 .modes { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
 .modes button { white-space: nowrap; border: 0; background: var(--panel); color: var(--muted); padding: 4px 12px; font-size: 0.875rem; font-weight: 600; }
 .modes button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
@@ -116,6 +117,20 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .notice { background: var(--pin); border-radius: 10px; padding: 12px 16px; }
 .linkish { border: 0; background: none; padding: 0; color: inherit; font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .topbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+.topbtns { align-items: center; }
+.account { position: relative; }
+.acct-btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 4px 12px 4px 4px; font-weight: 600; max-width: 220px; }
+.acct-av { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-family: var(--display); font-weight: 700; flex: 0 0 auto; position: relative; }
+.acct-av::after { content: ""; position: absolute; right: -1px; bottom: -1px; width: 10px; height: 10px; border-radius: 50%; background: var(--cat-revision); border: 2px solid var(--panel); }
+.acct-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acct-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 15; min-width: 240px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); padding: 6px; display: grid; }
+.acct-head { display: grid; gap: 2px; padding: 8px 10px 10px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.acct-head small { color: var(--muted); overflow-wrap: anywhere; }
+.acct-on { color: var(--cat-revision); font-size: 0.78rem; font-weight: 600; }
+.acct-menu [role="menuitem"] { border: 0; background: none; color: var(--ink); text-align: left; padding: 8px 10px; border-radius: 8px; font-weight: 600; }
+.acct-menu [role="menuitem"]:hover, .acct-menu [role="menuitem"]:focus-visible { background: var(--bg); }
+.welcome { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+@media (max-width: 600px) { .acct-name { display: none; } .acct-btn { padding-right: 10px; } .acct-menu { left: 0; right: auto; } }
 .avatar { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-family: var(--display); font-weight: 700; font-size: 1.6rem; flex: 0 0 auto; }
 .pfhead { display: flex; gap: 14px; align-items: center; }
 .level { display: inline-block; background: var(--pin); border-radius: 999px; padding: 2px 10px; font-size: 0.82rem; font-weight: 600; }
@@ -227,12 +242,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
       <p class="tagline"><span>Wir treffen uns!</span> Le planning, les bons plans et les infos du groupe.</p>
     </div>
     <div class="topbtns">
-      <button class="btn" id="btn-profile">Mon profil</button>
-      <button class="btn ghost" id="btn-logout" hidden>Déconnexion</button>
+      <div class="account" id="account" hidden>
+        <button type="button" class="acct-btn" id="btn-account" aria-haspopup="menu" aria-expanded="false" aria-controls="acct-menu">
+          <span class="acct-av" id="acct-av"></span><span class="acct-name" id="acct-name"></span><span aria-hidden="true">▾</span>
+        </button>
+        <div class="acct-menu" id="acct-menu" role="menu" hidden>
+          <div class="acct-head"><span class="acct-on">● Connecté</span><b id="acct-full"></b><small id="acct-email"></small></div>
+          <button type="button" role="menuitem" id="m-view">👤 Voir mon profil</button>
+          <button type="button" role="menuitem" id="btn-profile">✏️ Modifier mon profil</button>
+          <button type="button" role="menuitem" id="btn-logout">↩ Se déconnecter</button>
+        </div>
+      </div>
       <button class="btn primary" id="btn-add">+ Publier</button>
     </div>
   </div>
 
+  <div id="welcome" class="notice welcome" hidden><span><b>Bienvenue !</b> Présentez-vous au groupe : votre nom, votre niveau d'allemand, votre ville.</span><button class="btn primary small" id="welcome-go">Créer mon profil</button></div>
   <div id="status" class="notice" hidden></div>
   <div id="reminders" class="reminders" hidden></div>
 
