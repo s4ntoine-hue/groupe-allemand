@@ -757,21 +757,64 @@ function parseCandidates(text) {
   return (text.match(/\{[^{}]*\}/g) || []).map(o => { try { return JSON.parse(o); } catch { return null; } }).filter(Boolean);
 }
 
+function importPrompt(today, filter) {
+  return `Tu extrais des événements d'un document pour le calendrier d'un groupe d'apprentissage de l'allemand en France. Aujourd'hui nous sommes le ${today}.
+Réponds UNIQUEMENT par un tableau JSON, sans texte autour. Chaque élément : {"title": string, "date": "YYYY-MM-DD", "start": "HH:MM" ou "", "end": "HH:MM" ou "", "place": string, "details": string, "category": "cours" | "revision" | "conversation" | "culture" | "sortie" | "autre"}.
+Règles : si l'année ou le mois manquent, déduis-les du document et des jours de la semaine, sinon choisis la prochaine date à venir. "place" = lieu (ville et salle si connus). "details" = une phrase courte utile (ex. "Festival Augenblick, séance en présence de l'équipe"), ou "". N'invente rien. Titres en casse normale, pas tout en majuscules.
+${filter ? "Ne garde que les événements qui correspondent à : " + filter + "\n" : ""}`;
+}
+
+/* Free import: the member runs the instruction in their own Claude or ChatGPT, then pastes the answer back. */
+function openManualImport() {
+  if (!requireDb()) return;
+  openOverlay(`<form class="sheet" id="f" role="dialog" aria-label="Importer par copier-coller">
+    <h2>Importer des événements (gratuit)</h2>
+    <p class="hint">Vous utilisez votre propre assistant (Claude, ChatGPT…) pour lire le document, puis vous recollez sa réponse ici.</p>
+    <div class="field"><label for="mi-filter">Ne garder que… (facultatif)</label><input id="mi-filter" maxlength="200" placeholder="ex. les séances à Strasbourg"></div>
+    <p style="margin:0"><b>1.</b> <button type="button" class="btn small primary" id="mi-copy">Copier la consigne</button> <span class="hint" id="mi-copied" style="display:inline"></span></p>
+    <p style="margin:0"><b>2.</b> Ouvrez <a href="https://claude.ai/new" target="_blank" rel="noopener">Claude</a> ou <a href="https://chatgpt.com" target="_blank" rel="noopener">ChatGPT</a>, collez la consigne, puis joignez le document (PDF, photo) ou collez le texte de la page web. Envoyez.</p>
+    <div class="field"><label for="mi-answer"><b>3.</b> Copiez toute la réponse et collez-la ici</label><textarea id="mi-answer" rows="5" placeholder='[{"title": "…", "date": "2026-11-12", …}]'></textarea></div>
+    <p class="err" id="err"></p>
+    <div class="foot"><button type="button" class="btn ghost" id="x">Annuler</button><button class="btn primary">Voir les événements</button></div></form>`);
+  $("#x").onclick = closeOverlay;
+  $("#mi-copy").onclick = async () => {
+    const text = importPrompt(ymd(new Date()), $("#mi-filter").value.trim()) + "\nLe document est joint ou collé ci-dessous.\n";
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch {}
+    if (!ok) {
+      const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { ok = document.execCommand("copy"); } catch {}
+      ta.remove();
+    }
+    if (ok) $("#mi-copied").textContent = "✓ Copiée";
+    else { $("#mi-answer").value = text; $("#mi-copied").textContent = "Copiez le texte affiché dans la case 3, puis videz-la."; }
+  };
+  $("#f").onsubmit = evt => {
+    evt.preventDefault();
+    const cands = parseCandidates($("#mi-answer").value).filter(c => c && c.title && /^\d{4}-\d{2}-\d{2}$/.test(c.date || ""));
+    if (!cands.length) { $("#err").textContent = "Aucun événement reconnu. Vérifiez que vous avez collé toute la réponse, qui commence par [ et finit par ]."; return; }
+    showCandidates(cands, false);
+  };
+}
+
 async function openImport() {
   if (!requireDb()) return;
   const sample = await claude.use("sample");
-  if (!sample) { setStatus("L'import automatique n'est pas activé sur ce site. Ajoutez les événements à la main avec « Un événement dans le planning »."); return; }
+  if (!sample) { openManualImport(); return; }
   let canImages = false;
   try { canImages = !!(await sample.limits()).images; } catch {}
   openOverlay(`<form class="sheet" id="f" role="dialog" aria-label="Importer des événements">
     <h2>Importer des événements</h2>
     <p class="hint">Claude lit le document ou le texte et vous propose les événements trouvés. Vous choisissez ensuite ceux à ajouter.</p>
+    <p class="hint">Ou gratuitement avec votre propre Claude ou ChatGPT : <button type="button" class="linkish" id="manual">import par copier-coller</button>.</p>
     <div class="field"><label for="im-file">Document : PDF${canImages ? ", photo ou capture d'écran" : ""}</label><input id="im-file" type="file" accept="application/pdf${canImages ? ",image/*" : ""}"></div>
     <div class="field"><label for="im-text">Ou collez le texte d'une page web</label><textarea id="im-text" rows="4" placeholder="Sur la page, sélectionnez tout (Ctrl+A), copiez, puis collez ici."></textarea></div>
     <div class="field"><label for="im-filter">Ne garder que… (facultatif)</label><input id="im-filter" maxlength="200" placeholder="ex. les séances à Strasbourg, ou en présence des équipes"></div>
     <p class="err" id="err"></p>
     <div class="foot"><button type="button" class="btn ghost" id="x">Annuler</button><button class="btn primary" id="go">Chercher les événements</button></div></form>`);
   $("#x").onclick = closeOverlay;
+  $("#manual").onclick = openManualImport;
   $("#f").onsubmit = async evt => {
     evt.preventDefault();
     const file = $("#im-file").files[0], pasted = $("#im-text").value.trim(), filter = $("#im-filter").value.trim();
@@ -786,10 +829,7 @@ async function openImport() {
     if (text.length > 150000) text = text.slice(0, 150000);
     $("#err").textContent = "Claude cherche les événements…";
     const today = ymd(new Date());
-    const prompt = `Tu extrais des événements d'un document pour le calendrier d'un groupe d'apprentissage de l'allemand en France. Aujourd'hui nous sommes le ${today}.
-Réponds UNIQUEMENT par un tableau JSON, sans texte autour. Chaque élément : {"title": string, "date": "YYYY-MM-DD", "start": "HH:MM" ou "", "end": "HH:MM" ou "", "place": string, "details": string, "category": "cours" | "revision" | "conversation" | "culture" | "sortie" | "autre"}.
-Règles : si l'année ou le mois manquent, déduis-les du document et des jours de la semaine, sinon choisis la prochaine date à venir. "place" = lieu (ville et salle si connus). "details" = une phrase courte utile (ex. "Festival Augenblick, séance en présence de l'équipe"), ou "". N'invente rien. Titres en casse normale, pas tout en majuscules.
-${filter ? "Ne garde que les événements qui correspondent à : " + filter + "\n" : ""}${text ? "\nDOCUMENT :\n" + text : "\nLe document est l'image jointe."}`;
+    const prompt = importPrompt(today, filter) + (text ? "\nDOCUMENT :\n" + text : "\nLe document est l'image jointe.");
     let res;
     try { res = await sample(prompt, { images, modelTier: "default", cache: false }); }
     catch (e) {
