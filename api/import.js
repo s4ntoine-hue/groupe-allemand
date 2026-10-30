@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-    body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5", max_tokens: 16000, messages: [{ role: "user", content }] }),
+    body: JSON.stringify({ model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5-5", max_tokens: 16000, output_config: { effort: "low" }, messages: [{ role: "user", content }] }),
   });
   if (r.status === 429) return res.status(429).json({ error: "rate limited" });
   if (!r.ok) return res.status(502).json({ error: await r.text() });
