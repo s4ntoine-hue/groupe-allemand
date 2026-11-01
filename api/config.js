@@ -6,6 +6,6 @@ export default function handler(req, res) {
   res.status(200).json({
     supabaseUrl: supabaseUrl(),
     supabaseAnonKey: supabaseKey(),
-    importEnabled: !!process.env.ANTHROPIC_API_KEY && process.env.IMPORT_ENABLED !== "false",
+    importEnabled: !!(process.env.ANTHROPIC_API_KEY || process.env.GEMINI_API_KEY) && process.env.IMPORT_ENABLED !== "false",
   });
 }

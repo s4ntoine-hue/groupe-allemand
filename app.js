@@ -806,7 +806,7 @@ async function openImport() {
   try { canImages = !!(await sample.limits()).images; } catch {}
   openOverlay(`<form class="sheet" id="f" role="dialog" aria-label="Importer des événements">
     <h2>Importer des événements</h2>
-    <p class="hint">Claude lit le document ou le texte et vous propose les événements trouvés. Vous choisissez ensuite ceux à ajouter.</p>
+    <p class="hint">L'assistant IA lit le document ou le texte et vous propose les événements trouvés. Vous choisissez ensuite ceux à ajouter.</p>
     <p class="hint">Ou gratuitement avec votre propre Claude ou ChatGPT : <button type="button" class="linkish" id="manual">import par copier-coller</button>.</p>
     <div class="field"><label for="im-file">Document : PDF${canImages ? ", photo ou capture d'écran" : ""}</label><input id="im-file" type="file" accept="application/pdf${canImages ? ",image/*" : ""}"></div>
     <div class="field"><label for="im-text">Ou collez le texte d'une page web</label><textarea id="im-text" rows="4" placeholder="Sur la page, sélectionnez tout (Ctrl+A), copiez, puis collez ici."></textarea></div>
@@ -827,7 +827,7 @@ async function openImport() {
       else if (file) images = [file];
     } catch { $("#go").disabled = false; $("#err").textContent = "Ce PDF n'a pas pu être lu. Copiez son texte et collez-le dans le champ ci-dessous."; return; }
     if (text.length > 150000) text = text.slice(0, 150000);
-    $("#err").textContent = "Claude cherche les événements…";
+    $("#err").textContent = "Recherche des événements… (jusqu'à une minute)";
     const today = ymd(new Date());
     const prompt = importPrompt(today, filter) + (text ? "\nDOCUMENT :\n" + text : "\nLe document est l'image jointe.");
     let res;
@@ -835,7 +835,7 @@ async function openImport() {
     catch (e) {
       $("#go").disabled = false;
       $("#err").textContent = e && e.code === "rate_limited" ? "Trop de demandes pour le moment. Réessayez dans quelques minutes."
-        : e && e.code === "not_granted" ? "Votre session a expiré : reconnectez-vous puis réessayez." : "Claude n'a pas pu lire ce document. Essayez avec moins de texte.";
+        : e && e.code === "not_granted" ? "Votre session a expiré : reconnectez-vous puis réessayez." : "Le document n'a pas pu être lu. Essayez avec moins de texte, ou l'import par copier-coller.";
       return;
     }
     const cands = parseCandidates(res.text).filter(c => c && c.title && /^\d{4}-\d{2}-\d{2}$/.test(c.date || ""));

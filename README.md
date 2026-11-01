@@ -19,6 +19,7 @@ Hébergement gratuit : **Vercel** (le site) + **Supabase** (les données et les 
 3. Avant **Deploy**, ouvrez **Environment Variables** et ajoutez :
    - `SUPABASE_URL` = la Project URL
    - `SUPABASE_ANON_KEY` = la clé anon public
+   - *(facultatif, gratuit)* `GEMINI_API_KEY` = une clé gratuite de [Google AI Studio](https://aistudio.google.com/apikey) pour l'import automatique d'événements (quota gratuit ; en version gratuite, Google peut utiliser les documents envoyés).
    - *(facultatif, payant)* `ANTHROPIC_API_KEY` = une clé de [console.anthropic.com](https://console.anthropic.com) pour l'import automatique d'événements. Sans cette clé, le bouton d'import affiche simplement qu'il n'est pas activé.
 4. **Deploy**. Le lien du site (`https://groupe-allemand-….vercel.app`) est à partager aux membres.
 
