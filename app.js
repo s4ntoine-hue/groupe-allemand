@@ -938,7 +938,12 @@ window.startApp = async () => {
     snap => { state[key] = snap.docs.map(d => ({ id: d.id, ...d.data() })); resolveNames(state[key].map(x => x.authorId)); render(); },
     () => setStatus("Le tableau n'a pas pu être chargé. Rechargez la page dans un instant."));
   listen("events", "events"); listen("posts", "posts"); listen("stories", "stories");
-  db.doc("news/current").onSnapshot(snap => { state.news = snap.exists ? snap.data() : null; renderStories(); }, () => {});
+  // Fresh articles from the site's own /api/news; the copy saved in Supabase is the fallback.
+  let liveNews = null;
+  db.doc("news/current").onSnapshot(snap => { if (!liveNews) { state.news = snap.exists ? snap.data() : null; renderStories(); } }, () => {});
+  fetch("/api/news").then(r => r.ok ? r.json() : null).then(n => {
+    if (n && n.items && n.items.length) { liveNews = n; state.news = n; renderStories(); }
+  }).catch(() => {});
   db.collection("comments").onSnapshot(snap => {
     state.comments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     resolveNames(state.comments.map(c => c.authorId));
