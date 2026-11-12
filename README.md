@@ -27,7 +27,7 @@ Hébergement gratuit : **Vercel** (le site) + **Supabase** (les données et les 
 - Chaque membre crée son compte avec son e-mail et un mot de passe, puis remplit son profil.
 - Chacun modifie et supprime ses propres publications ; le modérateur peut tout modifier.
 - Supabase gratuit met le projet en pause après 7 jours sans visite : un clic sur **Restore** dans Supabase le relance.
-- Le fil d'actualité se met à jour tout seul : la story « Aujourd'hui » vient du calendrier, et la story « Nachrichten » lit les articles de nachrichtenleicht.de (rafraîchis au plus une fois par heure, via `api/news.js`). Si ce site ne répond pas, les derniers articles enregistrés dans Supabase restent affichés.
+- Le fil d'actualité se met à jour tout seul : la story « Aujourd'hui » vient du calendrier, et la story « Nachrichten » reprend les derniers articles de la page d'accueil de nachrichtenleicht.de (rafraîchis au plus une fois par heure, via `api/news.js`). Si ce site ne répond pas, les derniers articles enregistrés dans Supabase restent affichés.
 - Le contenu de la version Claude (bons plans, infos, liens, ressources, festival Augenblick) est déjà inclus dans `installation.sql`.
 
 ## Fichiers
