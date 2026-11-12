@@ -11,6 +11,9 @@ const UA = { "user-agent": "Mozilla/5.0 (compatible; groupe-allemand/1.0)" };
 // Links on the home page that are not news articles.
 const NOT_NEWS = /(impressum|datenschutz|kontakt|ueber-uns|podcast|woerterbuch|barrierefreiheit|hilfe|leichte-sprache|einfache-sprache|nutzungsbedingungen)/i;
 
+// Headings of the page layout, never the title of an article.
+const GENERIC = /^(podcast|nachrichtenleicht|nachrichten|audio|hören|menü|suche)\b|podcast hören/i;
+
 const decode = s => (s || "")
   .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
   .replace(/<[^>]+>/g, " ")
@@ -55,11 +58,15 @@ export function parseArticle(html, url) {
   const type = meta(html, "og:type");
   if (type && !/article/i.test(type)) return null; // a section page, not a news article
   // The h1 is the plain headline; og:title starts with a topic word ("Leichtathletin - ...").
-  const h1 = decode((html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || [])[1]);
-  const t = h1 || meta(html, "og:title").replace(/^[^-–]{2,40}\s[-–]\s/, "") || decode((html.match(/<title>([\s\S]*?)<\/title>/i) || [])[1]).replace(/\s*[|·-]\s*nachrichtenleicht.*$/i, "");
+  // Some pages have other h1s first (e.g. "Podcast hören"): take the h1 that og:title contains.
+  const og = meta(html, "og:title");
+  const h1s = [...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)].map(m => decode(m[1])).filter(x => x && !GENERIC.test(x));
+  const h1 = h1s.find(x => og && og.toLowerCase().includes(x.toLowerCase())) || (og ? "" : h1s[0]) || "";
+  const t = h1 || og.replace(/^[^-–]{2,40}\s[-–]\s/, "") || decode((html.match(/<title>([\s\S]*?)<\/title>/i) || [])[1]).replace(/\s*[|·-]\s*nachrichtenleicht.*$/i, "");
   const teaser = firstSentence(meta(html, "og:description") || meta(html, "description"));
   const at = Date.parse(meta(html, "article:published_time") || meta(html, "pub_date") || meta(html, "date") || "") || 0;
-  return t ? { t, teaser, url, at } : null;
+  const img = meta(html, "og:image") || meta(html, "twitter:image");
+  return t ? { t, teaser, url, at, ...(/^https:\/\//.test(img) ? { img } : {}) } : null;
 }
 
 export function parseRss(xml) {

@@ -60,17 +60,35 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .story small { font-size: 0.75rem; color: var(--muted); max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Tabs */
-.tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
-.tab { border: 0; background: none; color: var(--muted); padding: 10px 14px; font-weight: 600; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+.tabs { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); scroll-snap-type: x proximity; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: 0 0 auto; white-space: nowrap; scroll-snap-align: start; border: 0; background: none; color: var(--muted); padding: 10px 14px; font-weight: 600; border-bottom: 3px solid transparent; }
+@media (max-width: 600px) {
+  .tabs { gap: 0; margin-inline: -16px; padding-inline: 8px; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 28px), transparent); }
+  .tab { padding: 10px 12px; }
+}
 .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
 
 /* Week board */
 .weekbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
-.weekbar h2 { font-size: 1.25rem; font-weight: 600; }
-.weekbar .nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.weekbar .period { order: -1; display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 320px; }
+.weekbar h2 { font-size: 1.25rem; font-weight: 600; min-width: 0; }
+.weekbar .step { width: 36px; height: 36px; padding: 0; flex: 0 0 auto; display: grid; place-items: center; }
+#thisweek { margin-left: auto; flex: 0 0 auto; }
+@media (max-width: 600px) {
+  .weekbar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .weekbar .period { order: 0; display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; grid-template-areas: "prev label next" "today today today"; row-gap: 6px; }
+  .weekbar .period:has(#thisweek[hidden]) { grid-template-areas: "prev label next"; }
+  #prev { grid-area: prev; } #next { grid-area: next; }
+  .weekbar h2 { grid-area: label; font-size: 1.05rem; text-align: center; }
+  #thisweek { grid-area: today; justify-self: center; margin: 0; }
+  .weekbar .step { width: 40px; height: 40px; }
+  .weekbar .modes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .weekbar .modes button { padding: 8px 2px; font-size: 0.85rem; }
+}
 .wrap > * { min-width: 0; }
 .modes { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
-.modes button { white-space: nowrap; border: 0; background: var(--panel); color: var(--muted); padding: 4px 12px; font-size: 0.875rem; font-weight: 600; }
+.modes button { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 0; background: var(--panel); color: var(--muted); padding: 4px 12px; font-size: 0.875rem; font-weight: 600; }
 .modes button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .cal .dow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; text-align: center; padding-bottom: 2px; }
@@ -84,17 +102,32 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .chip { display: block; background: var(--pin); border-radius: 4px; padding: 1px 4px; font-size: 0.74rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chip b { font-family: var(--mono); font-weight: 500; font-size: 0.68rem; color: var(--muted); }
 .more { font-size: 0.7rem; color: var(--muted); }
-.dots { display: none; gap: 3px; flex-wrap: wrap; }
-.dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+.dots { display: none; }
+.count { display: none; }
 @media (max-width: 600px) {
-  .cell { min-height: 52px; padding: 4px; }
+  .cell, .cal.week .cell { min-height: 58px; padding: 4px 2px; justify-items: center; text-align: center; gap: 4px; }
+  .cal.month .cell { min-height: 50px; }
   .cell .chip, .cell .more { display: none; }
-  .cell .dots { display: flex; }
+  .cell .count { --c: var(--cat-autre); display: block; min-width: 24px; padding: 1px 6px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; line-height: 1.35; color: var(--panel); background: var(--c); font-variant-numeric: tabular-nums; }
+  .cell .dots { display: flex; gap: 3px; justify-content: center; }
+  .cell .dots i { width: 6px; height: 6px; border-radius: 50%; }
+  .cell.today { box-shadow: inset 0 3px 0 var(--today); }
 }
 .dayview { display: grid; gap: 10px; margin-top: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
 .dayview header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
 .dayview h3 { font-size: 1.15rem; }
 .dayview .evs { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.dayview .evrows { display: grid; gap: 6px; }
+.ev.past, .dayrow.past { opacity: 0.55; }
+.nowline { display: flex; align-items: center; gap: 8px; color: var(--today); font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.nowline::after { content: ""; flex: 1; height: 2px; background: var(--today); border-radius: 2px; }
+.daymode .dayview { margin-top: 0; }
+@media (max-width: 600px) {
+  .dayview { padding: 12px; }
+  .dayview header { display: grid; }
+  .addday { justify-self: start; }
+  .ev, .ev:nth-child(odd) { transform: none; }
+}
 .addday { border: 1px dashed var(--line); background: none; color: var(--muted); border-radius: 8px; padding: 4px 12px; font-size: 0.85rem; }
 .ev { background: var(--pin); border-radius: 6px; padding: 8px; display: grid; gap: 4px; min-width: 0; transform: rotate(-0.4deg); }
 .ev:nth-child(odd) { transform: rotate(0.5deg); }
@@ -193,7 +226,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .detail .when { font-family: var(--display); font-weight: 600; }
 .calbtns { display: grid; gap: 8px; }
 .calbtns a, .calbtns button { text-align: center; text-decoration: none; }
-.filters { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-top: 12px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; font-size: 0.9rem; }
+.filterbox { margin-top: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.filterbox summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-size: 0.9rem; min-width: 0; }
+.filterbox summary::-webkit-details-marker { display: none; }
+.filterbox summary::before { content: "⚙"; color: var(--muted); }
+.filterbox summary::after { content: "▾"; margin-left: auto; color: var(--muted); transition: transform 0.15s; }
+.filterbox[open] summary::after { transform: rotate(180deg); }
+.fb-title { font-weight: 600; flex: 0 0 auto; }
+.fb-sum { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; padding: 0 12px 12px; font-size: 0.9rem; }
 .filters label { display: inline-flex; gap: 6px; align-items: center; }
 .filters select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; max-width: 100%; }
 .tag { display: inline-block; color: #fff; border-radius: 999px; padding: 1px 8px; font-size: 0.72rem; font-weight: 600; }
@@ -207,9 +248,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .legend button { --c: var(--cat-autre); display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 3px 12px 3px 8px; font-size: 0.85rem; }
 .legend button i { width: 12px; height: 12px; border-radius: 50%; background: var(--c); }
 .legend button[aria-pressed="false"] { opacity: 0.45; text-decoration: line-through; }
+.legend .short { display: none; }
+@media (max-width: 600px) {
+  .legend { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-inline: -16px; padding-inline: 16px; }
+  .legend::-webkit-scrollbar { display: none; }
+  .legend button { flex: 0 0 auto; white-space: nowrap; padding: 4px 10px 4px 8px; font-size: 0.82rem; }
+  .legend .long { display: none; } .legend .short { display: inline; }
+}
 
 /* Overlays */
-.overlay { position: fixed; inset: 0; background: rgba(10, 12, 18, 0.55); display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); z-index: 20; }
+.overlay { position: fixed; inset: 0; background: rgba(10, 12, 18, 0.55); display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); z-index: 20; grid-template-columns: minmax(0, 1fr); }
+.overlay > * { justify-self: center; }
 .sheet { background: var(--panel); color: var(--ink); border-radius: 14px; width: min(520px, 100%); max-height: 100%; overflow: auto; padding: 20px; display: grid; gap: 14px; }
 .sheet h2 { font-size: 1.3rem; }
 .field { display: grid; gap: 4px; }
@@ -231,7 +280,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .viewer .content ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; font-size: 1.05rem; }
 .viewer .content li b { font-family: var(--mono); font-weight: 500; font-size: 0.85rem; display: block; opacity: 0.85; }
 .viewer .vnav { display: flex; justify-content: space-between; gap: 8px; }
-.viewer .vnav button { background: rgba(255,255,255,0.18); color: #fff; border: 0; border-radius: 999px; padding: 6px 14px; }
+.viewer .vnav button { background: rgba(255,255,255,0.18); color: #fff; border: 0; border-radius: 999px; padding: 8px 16px; min-width: 44px; }
+.viewer .vnav button:disabled { opacity: 0.35; }
+.viewer .photo { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; margin-bottom: 16px; background: rgba(255,255,255,0.08); }
+.viewer .content { min-height: 0; }
+@media (max-width: 600px) {
+  .overlay:has(.viewer) { padding: 0; }
+  .viewer { width: 100%; height: 100%; max-height: none; aspect-ratio: auto; border-radius: 0;
+    padding: max(14px, env(safe-area-inset-top, 0px)) 18px max(14px, env(safe-area-inset-bottom, 0px)); }
+}
 @media (prefers-reduced-motion: no-preference) { .sheet, .viewer { animation: pop 0.18s ease-out; } @keyframes pop { from { transform: scale(0.97); opacity: 0.6; } } }
 </style>
 
@@ -273,26 +330,30 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
   <section id="view-planning">
     <div class="weekbar">
-      <h2 id="weeklabel">Les 15 prochains jours</h2>
-      <div class="nav">
-        <div class="modes" role="group" aria-label="Affichage">
-          <button id="mode-week" data-mode="week">Semaine</button>
-          <button id="mode-15" data-mode="15">15 jours</button>
-          <button id="mode-month" data-mode="month">Mois</button>
-          <button id="mode-list" data-mode="list">À venir</button>
-        </div>
-        <button class="btn small" id="prev" aria-label="Période précédente">←</button>
+      <div class="modes" role="group" aria-label="Affichage">
+        <button id="mode-day" data-mode="day">Jour</button>
+        <button id="mode-week" data-mode="week">Semaine</button>
+        <button id="mode-15" data-mode="15">15 jours</button>
+        <button id="mode-month" data-mode="month">Mois</button>
+        <button id="mode-list" data-mode="list">À venir</button>
+      </div>
+      <div class="period">
+        <button class="btn small step" id="prev" aria-label="Période précédente">←</button>
+        <h2 id="weeklabel">Les 15 prochains jours</h2>
+        <button class="btn small step" id="next" aria-label="Période suivante">→</button>
         <button class="btn small" id="thisweek">Aujourd'hui</button>
-        <button class="btn small" id="next" aria-label="Période suivante">→</button>
       </div>
     </div>
-    <div class="filters" id="filters">
-      <label for="flt-city">Autour de <select id="flt-city"><option value="">partout</option></select></label>
-      <label for="flt-radius">dans un rayon de <select id="flt-radius">
-        <option value="10">10 km</option><option value="20">20 km</option><option value="30">30 km</option><option value="50">50 km</option><option value="100">100 km</option></select></label>
-      <span id="flt-progs" style="display:contents"></span>
-      <span class="hint" id="flt-info"></span>
-    </div>
+    <details class="filterbox" id="filterbox">
+      <summary><span class="fb-title">Filtres</span><span class="fb-sum" id="flt-sum"></span></summary>
+      <div class="filters" id="filters">
+        <label for="flt-city">Autour de <select id="flt-city"><option value="">partout</option></select></label>
+        <label for="flt-radius">dans un rayon de <select id="flt-radius">
+          <option value="10">10 km</option><option value="20">20 km</option><option value="30">30 km</option><option value="50">50 km</option><option value="100">100 km</option></select></label>
+        <span id="flt-progs" style="display:contents"></span>
+        <span class="hint" id="flt-info"></span>
+      </div>
+    </details>
     <div class="legend" id="legend" aria-label="Catégories : touchez pour masquer ou afficher"></div>
     <div class="cal" id="board" style="margin-top:12px"></div>
     <div class="dayview" id="dayview"></div>
