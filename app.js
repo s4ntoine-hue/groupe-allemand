@@ -23,20 +23,23 @@ const state = {
 try { state.seen = new Set(JSON.parse(localStorage.getItem("seenStories") || "[]")); } catch {}
 try { const t = localStorage.getItem("tab"); if (t) state.tab = t; } catch {}
 try { const f = JSON.parse(localStorage.getItem("filter") || "null"); if (f) Object.assign(state.filter, f); } catch {}
-try { const m = localStorage.getItem("calMode"); if (m === "month" || m === "week" || m === "list") state.mode = m; } catch {}
+try { const m = localStorage.getItem("calMode"); if (["day", "week", "month", "list"].includes(m)) state.mode = m; } catch {}
 
 function setStatus(msg) { const el = $("#status"); el.hidden = !msg; el.textContent = msg || ""; }
 const nameOf = id => (state.members[id] && state.members[id].displayName) || (state.profiles[id] && state.profiles[id].name) || "Un membre";
 const colorOf = id => (state.members[id] && state.members[id].color) || STORY_COLORS[0];
 const byLink = id => `<button type="button" class="linkish" data-profile="${esc(id || "")}">${esc(nameOf(id))}</button>`;
 const CATS = [
-  { id: "cours", label: "Cours" }, { id: "revision", label: "Révision" }, { id: "conversation", label: "Conversation, Stammtisch" },
-  { id: "culture", label: "Culture (cinéma, expo, concert)" }, { id: "sortie", label: "Sortie, rencontre" }, { id: "autre", label: "Autre" }];
+  { id: "cours", label: "Cours", short: "Cours" }, { id: "revision", label: "Révision", short: "Révision" }, { id: "conversation", label: "Conversation, Stammtisch", short: "Stammtisch" },
+  { id: "culture", label: "Culture (cinéma, expo, concert)", short: "Culture" }, { id: "sortie", label: "Sortie, rencontre", short: "Sortie" }, { id: "autre", label: "Autre", short: "Autre" }];
+// Phones get a more compact planning: counts instead of titles, short labels, list rows in the day panel.
+const phone = window.matchMedia("(max-width: 600px)");
+const isPhone = () => phone.matches;
 const catOf = e => CATS.some(c => c.id === e.category) ? e.category : "autre";
 const catLabel = id => (CATS.find(c => c.id === id) || CATS[5]).label;
 const catStyle = e => `--c: var(--cat-${catOf(e)})`;
 function renderLegend() {
-  $("#legend").innerHTML = CATS.map(c => `<button type="button" data-cat="${c.id}" style="--c: var(--cat-${c.id})" aria-pressed="${!state.filter.hiddenCats.includes(c.id)}"><i></i>${esc(c.label)}</button>`).join("");
+  $("#legend").innerHTML = CATS.map(c => `<button type="button" data-cat="${c.id}" style="--c: var(--cat-${c.id})" aria-pressed="${!state.filter.hiddenCats.includes(c.id)}" title="${esc(c.label)}"><i></i><span class="long">${esc(c.label)}</span><span class="short">${esc(c.short)}</span></button>`).join("");
   $("#legend").querySelectorAll("[data-cat]").forEach(b => b.onclick = () => {
     const id = b.dataset.cat, h = state.filter.hiddenCats;
     state.filter.hiddenCats = h.includes(id) ? h.filter(x => x !== id) : [...h, id];
@@ -169,6 +172,11 @@ function renderFilters() {
   });
   const progAll = programmeEvents().filter(e => !state.filter.hidden.includes(e.prog.id));
   const shown = progAll.filter(e => { const d = distanceOf(e); return d === null || d <= state.filter.radius; }).length;
+  const sum = [sel.value ? `${sel.value} · ${state.filter.radius} km` : "Partout",
+    ...state.programmes.filter(pg => !state.filter.hidden.includes(pg.id)).map(pg => pg.short || pg.name)];
+  const hc = (state.filter.hiddenCats || []).length;
+  if (hc) sum.push(`${hc} catégorie${hc > 1 ? "s" : ""} masquée${hc > 1 ? "s" : ""}`);
+  $("#flt-sum").textContent = sum.join(" · ");
   $("#flt-info").textContent = sel.value && progAll.length ? `${shown} séance${shown > 1 ? "s" : ""} sur ${progAll.length} à moins de ${state.filter.radius} km (à vol d'oiseau)` : "";
 }
 
@@ -253,17 +261,25 @@ function calRange() {
     const first = new Date(a.getFullYear(), a.getMonth(), 1);
     const last = new Date(a.getFullYear(), a.getMonth() + 1, 0);
     const label = fmtMonth.format(first);
-    return { gridStart: mondayOf(first), gridEnd: last, inFrom: first, inTo: last, label: label[0].toUpperCase() + label.slice(1) };
+    const isNow = ymd(first) === ymd(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+    return { gridStart: mondayOf(first), gridEnd: last, inFrom: first, inTo: last, isNow, label: label[0].toUpperCase() + label.slice(1) };
+  }
+  if (state.mode === "day") {
+    const k = ymd(a), t = startOfToday(), diff = Math.round((a - t) / 86400000);
+    const rel = diff === 0 ? "Aujourd'hui" : diff === 1 ? "Demain" : diff === -1 ? "Hier" : "";
+    const long = fmtLong.format(a);
+    return { gridStart: a, gridEnd: a, inFrom: a, inTo: a, key: k, isNow: diff === 0,
+      label: rel ? `${rel} · ${long}` : long[0].toUpperCase() + long.slice(1) };
   }
   if (state.mode === "week") {
     const mon = mondayOf(a), sun = new Date(mon); sun.setDate(sun.getDate() + 6);
     const isNow = ymd(mon) === ymd(mondayOf(new Date()));
-    return { gridStart: mon, gridEnd: sun, inFrom: mon, inTo: sun,
+    return { gridStart: mon, gridEnd: sun, inFrom: mon, inTo: sun, isNow,
       label: isNow ? `Cette semaine · du ${fmtShort.format(mon)} au ${fmtShort.format(sun)}` : `Semaine du ${fmtShort.format(mon)} au ${fmtShort.format(sun)}` };
   }
   const to = new Date(a); to.setDate(to.getDate() + 14);
   const isNow = ymd(a) === ymd(new Date());
-  return { gridStart: mondayOf(a), gridEnd: to, inFrom: a, inTo: to,
+  return { gridStart: mondayOf(a), gridEnd: to, inFrom: a, inTo: to, isNow,
     label: isNow ? `Les 15 prochains jours · jusqu'au ${fmtShort.format(to)}` : `Du ${fmtShort.format(a)} au ${fmtShort.format(to)}` };
 }
 
@@ -280,8 +296,14 @@ function renderBoard() {
     return;
   }
   const r = calRange();
+  const dayMode = state.mode === "day";
+  if (dayMode) state.selected = r.key;
   $("#weeklabel").textContent = r.label;
+  $("#thisweek").hidden = !!r.isNow;
+  $("#board").hidden = dayMode;
+  $("#view-planning").classList.toggle("daymode", dayMode);
   $("#board").classList.toggle("week", state.mode === "week");
+  $("#board").classList.toggle("month", state.mode === "month");
   document.querySelectorAll("[data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === state.mode)));
   const t = ymd(new Date());
   const from = ymd(r.inFrom), to = ymd(r.inTo);
@@ -296,7 +318,7 @@ function renderBoard() {
       <span class="dnum">${d.getDate()}</span>
       ${evs.slice(0, state.mode === "week" ? 6 : 3).map(e => `<span class="chip${e.prog ? " prog" : ""}" data-ev="${esc(e.id)}" style="${catStyle(e)}">${e.start ? `<b>${esc(e.start)}</b> ` : ""}${esc(e.title)}</span>`).join("")}
       ${evs.length > (state.mode === "week" ? 6 : 3) ? `<span class="more">+${evs.length - (state.mode === "week" ? 6 : 3)} autre${evs.length - (state.mode === "week" ? 6 : 3) > 1 ? "s" : ""}</span>` : ""}
-      <span class="dots">${evs.map(e => `<i style="${catStyle(e)}"></i>`).join("")}</span></button>`;
+      ${evs.length ? countHtml(evs) : ""}</button>`;
   }
   $("#board").innerHTML = html;
   $("#board").querySelectorAll("[data-day]").forEach(b => b.onclick = ev => {
@@ -305,22 +327,50 @@ function renderBoard() {
     const chip = ev.target.closest("[data-ev]");
     if (chip) openCalendarMenu(chip.dataset.ev, key);
     else if (!eventsOn(key).length) openEventForm(null, key);
+    else if (isPhone()) $("#dayview").scrollIntoView({ behavior: "smooth", block: "start" });
     else openDay(key);
   });
 
   const sel = state.selected, evs = eventsOn(sel);
   const dv = $("#dayview");
-  dv.innerHTML = `<header><h3>${esc(fmtLong.format(parseYmd(sel)))}${sel === t ? " · aujourd'hui" : ""}</h3>
+  // Today: events already over are dimmed, and a "Maintenant" line marks where we are in the day.
+  const now = new Date(), hm = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const past = e => sel < t || (sel === t && !!e.start && (e.end || addHour(e.start)) < hm);
+  const rows = !dayMode && isPhone();
+  let body = "", nowDone = sel !== t;
+  for (const e of evs) {
+    if (!nowDone && e.start && !past(e)) { body += `<div class="nowline" style="grid-column:1/-1">Maintenant · ${hm}</div>`; nowDone = true; }
+    body += rows ? dayRow(e, past(e)) : evCard(e, past(e));
+  }
+  if (!nowDone && evs.some(e => e.start)) body += `<div class="nowline" style="grid-column:1/-1">Maintenant · ${hm}</div>`;
+  const count = evs.length ? `${evs.length} événement${evs.length > 1 ? "s" : ""}` : "";
+  dv.innerHTML = `<header><h3>${dayMode ? esc(count || "Programme du jour") : esc(fmtLong.format(parseYmd(sel))) + (sel === t ? " · aujourd'hui" : "")}</h3>
       <button class="addday" id="addsel">+ Ajouter un événement ce jour-là</button></header>
-    ${evs.length ? `<div class="evs">${evs.map(evCard).join("")}</div>` : `<p style="margin:0;color:var(--muted)">Rien de prévu ce jour-là.</p>`}`;
+    ${evs.length ? `<div class="${rows ? "evrows" : "evs"}">${body}</div>` : `<p style="margin:0;color:var(--muted)">Rien de prévu ce jour-là.${dayMode ? " Utilisez → pour voir le jour suivant." : ""}</p>`}`;
   $("#addsel").onclick = () => openEventForm(null, sel);
+  dv.querySelectorAll("[data-open]").forEach(b => b.onclick = () => openCalendarMenu(b.dataset.open));
   dv.querySelectorAll("[data-cal]").forEach(b => b.onclick = () => openCalendarMenu(b.dataset.cal));
   dv.querySelectorAll("[data-editev]").forEach(b => b.onclick = () => openEventForm(state.events.find(e => e.id === b.dataset.editev.split("@")[0])));
 }
 
-function evCard(e) {
+// Phone calendar cell: number of events, coloured like the most frequent category, plus one dot per other category.
+function countHtml(evs) {
+  const n = {};
+  evs.forEach(e => { const c = catOf(e); n[c] = (n[c] || 0) + 1; });
+  const cats = Object.keys(n).sort((a, b) => n[b] - n[a]);
+  return `<span class="count" style="--c: var(--cat-${cats[0]})">${evs.length}</span>`
+    + (cats.length > 1 ? `<span class="dots">${cats.slice(1, 4).map(c => `<i style="--c: var(--cat-${c})"></i>`).join("")}</span>` : "");
+}
+function dayRow(e, isPast) {
+  const where = placeText(e), dist = distanceOf(e);
+  return `<button type="button" class="dayrow${isPast ? " past" : ""}" data-open="${esc(e.id)}" style="${catStyle(e)}">
+    <span class="t">${esc(e.start || "journée")}</span>
+    <span><b>${esc(e.title)}</b>${where ? `<small>${esc(where)}${dist !== null ? ` · ${dist < 1 ? "sur place" : Math.round(dist) + " km"}` : ""}</small>` : ""}</span>
+    <span class="go" aria-hidden="true">›</span></button>`;
+}
+function evCard(e, isPast) {
   const time = e.start ? (e.end ? `${e.start} à ${e.end}` : e.start) : "Toute la journée";
-  return `<article class="ev" style="${catStyle(e)}">
+  return `<article class="ev${isPast ? " past" : ""}" style="${catStyle(e)}">
     <span class="time">${esc(time)} · <span class="cattag">${esc(catLabel(catOf(e)).split(" (")[0])}</span></span>
     <h3>${esc(e.title)}</h3>
     ${e.place ? `<p>📍 ${esc(e.place)}</p>` : ""}
@@ -540,7 +590,7 @@ function openStoryViewer(startId) {
       const src = (state.news && state.news.source) || "nachrichtenleicht.de";
       who = `Nachrichten · actualité en allemand facile${items.length ? " · " + (s.n + 1) + "/" + items.length : ""}`;
       content = s.news
-        ? `<div><span class="pic" aria-hidden="true">${esc(s.news.emoji || "📰")}</span><span class="kicker">Nachrichten · ${esc(deDay)}</span>${esc(s.news.t)}${s.news.teaser ? `<span class="teaser">${esc(s.news.teaser)}</span>` : ""}<a href="${esc(s.news.url)}" target="_blank" rel="noopener">Lire l'article sur ${esc(src)} ↗</a></div>`
+        ? `<div>${s.news.img ? `<img class="photo" src="${esc(s.news.img)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : s.news.emoji ? `<span class="pic" aria-hidden="true">${esc(s.news.emoji)}</span>` : ""}<span class="kicker">Nachrichten · ${esc(deDay)}</span>${esc(s.news.t)}${s.news.teaser ? `<span class="teaser">${esc(s.news.teaser)}</span>` : ""}<a href="${esc(s.news.url)}" target="_blank" rel="noopener">Lire l'article sur ${esc(src)} ↗</a></div>`
         : `<div>L'actualité en allemand facile<span class="teaser">Des articles courts, écrits pour les personnes qui apprennent l'allemand.</span><a href="https://www.nachrichtenleicht.de" target="_blank" rel="noopener">nachrichtenleicht.de ↗</a><br><br><a href="https://learngerman.dw.com" target="_blank" rel="noopener">DW · Langsam gesprochene Nachrichten ↗</a></div>`;
       markSeen("news-" + ((state.news && state.news.updatedAt) || 0));
     } else {
@@ -557,7 +607,14 @@ function openStoryViewer(startId) {
     $("#vp").onclick = () => { if (idx > 0) { idx--; show(); } };
     $("#vn").onclick = next; $("#vx").onclick = closeOverlay;
     if (mine) $("#vdel").onclick = async () => { try { await state.db.collection("stories").doc(s.id).delete(); closeOverlay(); } catch {} };
-    state.storyTimer = setTimeout(next, s.id.startsWith("news-") ? 12000 : 7000);
+    // Tap the left third of a story to go back, elsewhere to go forward (links and buttons keep working).
+    $(".viewer").onclick = ev => {
+      if (ev.target.closest("a, button")) return;
+      const r = ev.currentTarget.getBoundingClientRect();
+      if (ev.clientX - r.left < r.width / 3) { if (idx > 0) { idx--; show(); } } else next();
+    };
+    // News articles stay until you move on: reading German takes time.
+    if (!s.id.startsWith("news-")) state.storyTimer = setTimeout(next, 7000);
   };
   const next = () => { if (idx < list.length - 1) { idx++; show(); } else closeOverlay(); };
   const o = $("#overlay"); o.hidden = false; o.onclick = e => { if (e.target === o) closeOverlay(); };
@@ -692,14 +749,16 @@ $("#tabs").onclick = e => {
   const b = e.target.closest("[data-tab]"); if (!b) return;
   state.tab = b.dataset.tab; try { localStorage.setItem("tab", state.tab); } catch {}
   render();
+  b.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
 };
 const shift = dir => {
   const a = state.anchor;
-  const step = state.mode === "week" ? 7 : 15;
+  const step = state.mode === "day" ? 1 : state.mode === "week" ? 7 : 15;
   state.anchor = state.mode === "month" ? new Date(a.getFullYear(), a.getMonth() + dir, 1) : new Date(a.getFullYear(), a.getMonth(), a.getDate() + step * dir);
   const now = new Date();
   const isCurrentMonth = state.anchor.getMonth() === now.getMonth() && state.anchor.getFullYear() === now.getFullYear();
   const isCurrentWeek = ymd(mondayOf(state.anchor)) === ymd(mondayOf(now));
+  if (state.mode === "day") { state.selected = ymd(state.anchor); render(); return; }
   state.selected = ymd((state.mode === "month" && isCurrentMonth) || (state.mode === "week" && isCurrentWeek) ? now : state.mode === "week" ? mondayOf(state.anchor) : state.anchor);
   render();
 };
@@ -713,6 +772,9 @@ document.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => {
   try { localStorage.setItem("calMode", state.mode); } catch {}
   render();
 });
+// Filters start open on a computer, folded on a phone (the summary line says what is active).
+$("#filterbox").open = !isPhone();
+phone.addEventListener("change", () => { if (state.tab === "planning") renderBoard(); });
 $("#btn-add").onclick = () => { if (requireDb()) openChooser(); };
 const acctMenu = open => { $("#acct-menu").hidden = !open; $("#btn-account").setAttribute("aria-expanded", String(open)); };
 $("#btn-account").onclick = e => { e.stopPropagation(); acctMenu($("#acct-menu").hidden); };
