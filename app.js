@@ -16,7 +16,7 @@ const LEVELS = ["Débutant (A1-A2)", "Intermédiaire (B1-B2)", "Avancé (C1-C2)"
 const state = {
   tab: "planning", mode: "15", anchor: startOfToday(), selected: ymd(new Date()),
   events: [], posts: [], stories: [],
-  me: null, isOwner: false, db: null, user: null, downloads: null, assets: null, profiles: {}, members: {}, programmes: [], attendance: {}, comments: [], news: null,
+  me: null, isOwner: false, db: null, user: null, downloads: null, assets: null, profiles: {}, members: {}, programmes: [], attendance: {}, comments: [], news: null, goethe: null,
   filter: { city: "", radius: 30, hidden: [], hiddenCats: [] },
   seen: new Set(),
 };
@@ -234,6 +234,9 @@ function renderStories() {
   const nk = "news-" + ((state.news && state.news.updatedAt) || 0);
   html += `<button class="story ${state.seen.has(nk) ? "seen" : ""}" data-story="news-0">
     <span class="ring"><span class="face" style="background:#1d2433;font-size:0.95rem">DE</span></span><small>Nachrichten</small></button>`;
+  const gk = "goethe-" + ((state.goethe && state.goethe.updatedAt) || 0);
+  html += `<button class="story ${state.seen.has(gk) ? "seen" : ""}" data-story="goethe-0">
+    <span class="ring"><span class="face" style="background:#2f6b2a;font-size:0.95rem">GI</span></span><small>Goethe</small></button>`;
   for (const s of liveStories()) {
     const n = nameOf(s.authorId);
     html += `<button class="story ${state.seen.has(s.id) ? "seen" : ""}" data-story="${esc(s.id)}">
@@ -518,7 +521,10 @@ async function save(coll, existing, data) {
 function openStoryViewer(startId) {
   const items = (state.news && state.news.items) || [];
   const newsSlides = items.length ? items.map((it, i) => ({ id: "news-" + i, news: it, n: i })) : [{ id: "news-0", news: null }];
-  const list = [{ id: "today" }, ...newsSlides, ...liveStories()];
+  // Goethe-Institut: upcoming events (Grand Est), then a slide of free learning resources.
+  const gItems = (state.goethe && state.goethe.items) || [];
+  const goetheSlides = [...gItems.map((it, i) => ({ id: "goethe-" + i, goethe: it, n: i })), { id: "goethe-" + gItems.length, goethe: null, n: gItems.length }];
+  const list = [{ id: "today" }, ...newsSlides, ...goetheSlides, ...liveStories()];
   let idx = Math.max(0, list.findIndex(s => s.id === startId));
   const show = () => {
     clearTimeout(state.storyTimer);
@@ -543,11 +549,19 @@ function openStoryViewer(startId) {
         ? `<div><span class="pic" aria-hidden="true">${esc(s.news.emoji || "📰")}</span><span class="kicker">Nachrichten · ${esc(deDay)}</span>${esc(s.news.t)}${s.news.teaser ? `<span class="teaser">${esc(s.news.teaser)}</span>` : ""}<a href="${esc(s.news.url)}" target="_blank" rel="noopener">Lire l'article sur ${esc(src)} ↗</a></div>`
         : `<div>L'actualité en allemand facile<span class="teaser">Des articles courts, écrits pour les personnes qui apprennent l'allemand.</span><a href="https://www.nachrichtenleicht.de" target="_blank" rel="noopener">nachrichtenleicht.de ↗</a><br><br><a href="https://learngerman.dw.com" target="_blank" rel="noopener">DW · Langsam gesprochene Nachrichten ↗</a></div>`;
       markSeen("news-" + ((state.news && state.news.updatedAt) || 0));
+    } else if (s.id.startsWith("goethe-")) {
+      const g = s.goethe;
+      bg = `linear-gradient(160deg, ${g ? (g.near ? "#2f6b2a" : "#3d6e6a") : "#5a6b1f"} 0%, #141821 100%)`;
+      who = `Goethe-Institut · ${g ? "événements" + (g.near ? " près de chez nous" : " dans le Grand Est") : "pratiquer gratuitement"} · ${s.n + 1}/${goetheSlides.length}`;
+      content = g
+        ? `<div><span class="pic" aria-hidden="true">${esc(g.emoji || "🇩🇪")}</span><span class="kicker">${esc([g.kind, g.when].filter(Boolean).join(" · "))}</span>${esc(g.t)}${g.teaser ? `<span class="teaser">${esc(g.teaser)}</span>` : ""}<a href="${esc(g.url)}" target="_blank" rel="noopener">Voir sur goethe.de ↗</a></div>`
+        : `<div><span class="pic" aria-hidden="true">🎓</span><span class="kicker">Goethe-Institut</span>Deutsch üben, kostenlos<span class="fr">Pratiquer l'allemand gratuitement</span><span class="teaser">Exercices, vidéos et podcasts du Goethe-Institut, pour tous les niveaux.</span><a href="https://www.goethe.de/prj/dfd/de/home.cfm" target="_blank" rel="noopener">Deutsch für dich (exercices) ↗</a><br><br><a href="https://www.goethe.de/de/spr/kur/tsd.html" target="_blank" rel="noopener">Teste dein Deutsch (mon niveau) ↗</a><br><br><a href="https://www.goethe.de/ins/fr/fr/ver.cfm" target="_blank" rel="noopener">Tous les événements en France ↗</a></div>`;
+      markSeen("goethe-" + ((state.goethe && state.goethe.updatedAt) || 0));
     } else {
       bg = s.color || STORY_COLORS[0]; who = nameOf(s.authorId);
       content = esc(s.text); markSeen(s.id);
     }
-    const mine = s.id !== "today" && !s.id.startsWith("news-") && canEdit(s);
+    const mine = s.id !== "today" && !s.id.startsWith("news-") && !s.id.startsWith("goethe-") && canEdit(s);
     $("#overlay").innerHTML = `<div class="viewer" role="dialog" aria-label="Story" style="background:${esc(bg)}">
       <div><div class="bars">${list.map((_, i) => `<i class="${i <= idx ? "on" : ""}"></i>`).join("")}</div><div class="who">${esc(who)}</div></div>
       <div class="content">${content}</div>
@@ -557,7 +571,7 @@ function openStoryViewer(startId) {
     $("#vp").onclick = () => { if (idx > 0) { idx--; show(); } };
     $("#vn").onclick = next; $("#vx").onclick = closeOverlay;
     if (mine) $("#vdel").onclick = async () => { try { await state.db.collection("stories").doc(s.id).delete(); closeOverlay(); } catch {} };
-    state.storyTimer = setTimeout(next, s.id.startsWith("news-") ? 12000 : 7000);
+    state.storyTimer = setTimeout(next, /^(news|goethe)-/.test(s.id) ? 12000 : 7000);
   };
   const next = () => { if (idx < list.length - 1) { idx++; show(); } else closeOverlay(); };
   const o = $("#overlay"); o.hidden = false; o.onclick = e => { if (e.target === o) closeOverlay(); };
@@ -943,6 +957,9 @@ window.startApp = async () => {
   db.doc("news/current").onSnapshot(snap => { if (!liveNews) { state.news = snap.exists ? snap.data() : null; renderStories(); } }, () => {});
   fetch("/api/news").then(r => r.ok ? r.json() : null).then(n => {
     if (n && n.items && n.items.length) { liveNews = n; state.news = n; renderStories(); }
+  }).catch(() => {});
+  fetch("/api/goethe").then(r => r.ok ? r.json() : null).then(g => {
+    if (g && g.items) { state.goethe = g; renderStories(); }
   }).catch(() => {});
   db.collection("comments").onSnapshot(snap => {
     state.comments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
