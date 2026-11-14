@@ -14,7 +14,7 @@ const NOT_NEWS = /(impressum|datenschutz|kontakt|ueber-uns|podcast|woerterbuch|b
 // Headings of the page layout, never the title of an article.
 const GENERIC = /^(podcast|nachrichtenleicht|nachrichten|audio|hören|menü|suche)\b|podcast hören/i;
 
-const decode = s => (s || "")
+export const decode = s => (s || "")
   .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
   .replace(/<[^>]+>/g, " ")
   .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
@@ -38,7 +38,7 @@ function meta(html, name) {
   return "";
 }
 
-function firstSentence(text) {
+export function firstSentence(text) {
   const m = text.match(/^.{20,220}?[.!?](\s|$)/);
   return (m ? m[0] : text.slice(0, 200)).trim();
 }

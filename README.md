@@ -28,10 +28,11 @@ Hébergement gratuit : **Vercel** (le site) + **Supabase** (les données et les 
 - Chacun modifie et supprime ses propres publications ; le modérateur peut tout modifier.
 - Supabase gratuit met le projet en pause après 7 jours sans visite : un clic sur **Restore** dans Supabase le relance.
 - Le fil d'actualité se met à jour tout seul : la story « Aujourd'hui » vient du calendrier, et la story « Nachrichten » reprend les derniers articles de la page d'accueil de nachrichtenleicht.de (rafraîchis au plus une fois par heure, via `api/news.js`). Si ce site ne répond pas, les derniers articles enregistrés dans Supabase restent affichés.
+- La story « Goethe » montre les prochains événements du Goethe-Institut dans le Grand Est (ceux de Strasbourg en premier ; il n'y a pas de Goethe-Institut à Strasbourg, c'est celui de Nancy qui couvre la région), puis une page de liens pour pratiquer l'allemand gratuitement. Elle se met à jour au plus une fois par heure, via `api/goethe.js`.
 - Le contenu de la version Claude (bons plans, infos, liens, ressources, festival Augenblick) est déjà inclus dans `installation.sql`.
 
 ## Fichiers
 - `index.html`, `app.js` : l'application.
 - `backend.js` : la connexion à Supabase (données, comptes, fichiers).
-- `api/config.js`, `api/import.js`, `api/news.js` : petites fonctions Vercel (réglages, import par IA, actualités en allemand facile).
+- `api/config.js`, `api/import.js`, `api/news.js`, `api/goethe.js` : petites fonctions Vercel (réglages, import par IA, actualités en allemand facile, événements du Goethe-Institut).
 - `supabase/installation.sql` : création de la base et contenu de départ.
